@@ -17,7 +17,7 @@ class LSTM(nn.Module):
 					  		hidden_size=hidden_size, 
 							batch_first=True, 
 							num_layers=num_layers, 
-							dropout=dropout)
+							dropout=dropout if num_layers > 1 else 0)
 		
 		self.classifier = nn.Sequential(nn.Linear(hidden_size, hidden_size), 
 								  		nn.Linear(hidden_size, output_size))
