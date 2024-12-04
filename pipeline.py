@@ -1,7 +1,7 @@
 from dotenv import load_dotenv, find_dotenv
 import os
 from models import train_model, LSTM
-from utils import action
+from utils import action, reformat_data
 import requests
 import torch
 import numpy as np
@@ -26,50 +26,32 @@ class agent:
 		
 		self.url = lambda function, symbol, outputsize: f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&outputsize={outputsize}&apikey={self.api_key}'
 		self.model = LSTM(output_size=5, num_layers=2)
+		self.ds = kwargs.get('ds')
+		self.ds_flag = self.ds is not None
 
-	def ma(self, ds, w):
-		return np.array([
-			np.concatenate((
-				e[:w - 1], 
-				np.convolve(e, np.ones(w), 'valid') / w)) 
-				for e in ds.T]).T
-	
-	def reformat_mat(self, mat):
-		X_seq = []
-		y_seq = []
-
-		for i in range(self.WINDOW, mat.shape[0]):
-			X_seq.append(mat[i-self.WINDOW:i, :])
-			y_seq.append(mat[i, :5])
-
-		X_seq = np.array(X_seq)
-		y_seq = np.array(y_seq)
-
-		X_seq = torch.Tensor(X_seq)
-		y_seq = torch.Tensor(y_seq)
-
-		return X_seq, y_seq
-
-	def get_train_set(self, slide=10):
+	def get_train_set(self, slide=0):
 		data_mat = self.api_call(self.function, self.symbol, 'full')
-		data_mat = data_mat[-self.TRAIN_LOOKBACK - slide: -slide]
+		data_mat = data_mat[-self.TRAIN_LOOKBACK:]
 
 		# sc = StandardScaler()
 		sc = MinMaxScaler(feature_range=(0, 1))
 		data_mat_scaled = sc.fit_transform(data_mat)
-		return self.reformat_mat(data_mat_scaled)
+		return reformat_data(data_mat_scaled, self.WINDOW)
 
 
 	def train(self, **kwargs):
 		X_train, y_train = self.get_train_set()
 		train_model(self.model, X_train, y_train, **kwargs)
 
-	def pred(self):
-		data_mat_api = self.api_call()
-		X, _ = self.reformat_mat(data_mat_api)
+	def pred(self, **kwargs):
+		data_mat_api = self.api_call(kwargs)
+		X, _ = reformat_data(data_mat_api, self.WINDOW)
 		return self.model(X).detach().numpy()
 
-	def api_call(self, function=None, symbol=None, outputsize=None):
+	def api_call(self, function=None, symbol=None, outputsize=None, **kwargs):
+		if self.ds_flag:
+			return self.ds[kwargs.get('ds_type', 'train')]
+
 		function = self.function if function is None else function
 		symbol = self.symbol if symbol is None else symbol
 		outputsize = self.outputsize if outputsize is None else outputsize
