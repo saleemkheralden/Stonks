@@ -1,6 +1,9 @@
+import os
 import torch
 import numpy as np
 from enum import Enum
+import google.generativeai as genai
+from dotenv import find_dotenv, load_dotenv
 
 class action(Enum):
 	BUY = 0
@@ -40,6 +43,7 @@ def train_test_split(X_seq, y_seq, split=.8):
 	X_val, y_val = X_seq[split:], y_seq[split:]
 
 	return X_train, y_train, X_val, y_val
+
 
 
 

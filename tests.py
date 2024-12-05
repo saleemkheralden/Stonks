@@ -1,40 +1,45 @@
 import matplotlib.pyplot as plt
-from pipeline import agent
+from pipeline import Agent, Gemini
 import pandas as pd
 import numpy as np
 from utils import ma, reformat_data, train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from pprint import pprint
 
-data = pd.read_csv('AAPL.csv')
-data.set_index('Date', inplace=True)
-data = data[['Open', 'High', 'Low', 'Close', 'Adj Close']]
-
-years = 5
-s = years * 365
-
-data_mat_np = data.to_numpy()
-data_mat_np = data_mat_np[-s:]
-
-data_mat = np.hstack((data_mat_np, 
-					  ma(data_mat_np, 50),
-					  ma(data_mat_np, 200)))
+agent= Agent()
+print(agent())
 
 
-# sc = StandardScaler()
-# sc = MinMaxScaler(feature_range=(0, 1))
-# data_mat_scaled = sc.fit_transform(data_mat)
-X, y = reformat_data(data_mat, 60)
-X_train, _, X_val, _ = train_test_split(X, y)
+# data = pd.read_csv('AAPL.csv')
+# data.set_index('Date', inplace=True)
+# data = data[['Open', 'High', 'Low', 'Close', 'Adj Close']]
 
-ds = {
-	'train': data_mat,
-	'validation': X_val
-}
+# years = 5
+# s = years * 365
 
-a = agent(ds=ds)
-print(a.ds_flag)
-print(a.get_train_set()[0].shape)
-print(X.shape)
+# data_mat_np = data.to_numpy()
+# data_mat_np = data_mat_np[-s:]
+
+# data_mat = np.hstack((data_mat_np, 
+# 					  ma(data_mat_np, 50),
+# 					  ma(data_mat_np, 200)))
+
+
+# # sc = StandardScaler()
+# # sc = MinMaxScaler(feature_range=(0, 1))
+# # data_mat_scaled = sc.fit_transform(data_mat)
+# X, y = reformat_data(data_mat, 60)
+# X_train, _, X_val, _ = train_test_split(X, y)
+
+# ds = {
+# 	'train': data_mat,
+# 	'validation': X_val
+# }
+
+# a = agent(ds=ds)
+# print(a.ds_flag)
+# print(a.get_train_set()[0].shape)
+# print(X.shape)
 
 
 
