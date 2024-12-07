@@ -6,9 +6,9 @@ from utils import ma, reformat_data, train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from pprint import pprint
 
-agent= Agent()
-print(agent())
-
+# agent= Agent()
+# print(agent())
+model = Gemini()
 
 # data = pd.read_csv('AAPL.csv')
 # data.set_index('Date', inplace=True)

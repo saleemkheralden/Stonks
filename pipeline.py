@@ -22,8 +22,6 @@ class Agent:
 
 
 
-
-
 class Gemini:
 	def __init__(self, stock='AAPL', interval='5min', API_KEY=None, **kwargs):
 		_ = load_dotenv(find_dotenv())
