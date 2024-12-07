@@ -10,24 +10,30 @@ class Transformer(nn.Module):
 		return x
 
 
-class LSTM(nn.Module):
+class STOCK_EMBEDDER(nn.Module):
 	def __init__(self, input_size=5, hidden_size=16, output_size=1, num_layers=2, dropout=.3):
-		super(LSTM, self).__init__()
+		super(STOCK_EMBEDDER, self).__init__()
 		self.lstm = nn.LSTM(input_size=input_size, 
 					  		hidden_size=hidden_size, 
 							batch_first=True, 
 							num_layers=num_layers, 
 							dropout=dropout if num_layers > 1 else 0)
 		
-		self.classifier = nn.Sequential(nn.Linear(hidden_size, hidden_size), 
+		self.regression_head = nn.Sequential(nn.Linear(hidden_size, hidden_size), 
 								  		nn.Linear(hidden_size, output_size))
 		
 	def forward(self, x):
+		self.embed(x)
+		
+		x = self.regression_head(x)
+		return x
+	
+	def embed(self, x):
 		x, _ = self.lstm(x)
 		
 		x = x[:, -1, :]
-		x = self.classifier(x)
 		return x
+		
 	
 
 def train_model(model, X_train, y_train, **kwargs):
