@@ -10,9 +10,9 @@ class Transformer(nn.Module):
 		return x
 
 
-class STOCK_EMBEDDER(nn.Module):
+class LSTM(nn.Module):
 	def __init__(self, input_size=5, hidden_size=16, output_size=1, num_layers=2, dropout=.3):
-		super(STOCK_EMBEDDER, self).__init__()
+		super(LSTM, self).__init__()
 		self.lstm = nn.LSTM(input_size=input_size, 
 					  		hidden_size=hidden_size, 
 							batch_first=True, 

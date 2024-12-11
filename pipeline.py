@@ -1,6 +1,6 @@
 from dotenv import load_dotenv, find_dotenv
 import os
-from models import train_model, STOCK_EMBEDDER
+from models import train_model, LSTM
 from utils import action, reformat_data
 import requests
 import torch
@@ -51,6 +51,100 @@ dictionary:
 		return json.loads(ret)
 
 
+class Embedder:
+	def __init__(self, symbol, API_KEY, **kwargs):
+		self.news_flag = kwargs.get('news', False)
+		if self.news_flag:
+			self.news_thresh = kwargs.get('news_thresh', .5)
+
+		self.symbol = symbol
+
+		self.api_key = API_KEY
+
+		self.outputsize = kwargs.get('outputsize', 'compact')
+		self.api_function = kwargs.get('function', 'TIME_SERIES_DAILY')
+		self.par = 'Daily' if self.api_function.__contains__('DAILY') else '5min'
+		self.WINDOW = kwargs.get('WINDOW', 60)
+		self.TRAIN_LOOKBACK = kwargs.get('TRAIN_LOOKBACK', 5) * 365  # TODO: CHANGE 365 IF NOT DAILY
+		
+		self.url = lambda api_function, symbol, outputsize: f'https://www.alphavantage.co/query?function={api_function}&symbol={symbol}&outputsize={outputsize}&apikey={self.api_key}'
+		if self.news_flag:
+			self.url = lambda symbol: f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={self.api_key}'
+
+	def api_call(self):
+		if self.news_flag:
+			url = self.url(self.symbol)
+		else:
+			url = self.url(self.api_function, self.symbol, self.outputsize)
+		
+		r = requests.get(url)
+		data = r.json()
+
+		return data
+	
+	def filter_news(self, data: dict):
+		req_stock_related = []
+
+		for article in data['feed']:
+			# pprint(article['ticker_sentiment'])
+			req_stock_score = 0
+			for e in article['ticker_sentiment']:
+				# print()
+				if e['ticker'] == "AAPL":
+					req_stock_score = float(e['relevance_score'])
+					# print(req_stock_score)
+					break
+			if req_stock_score > self.news_thresh:
+				req_stock_related.append(article)
+		
+		return req_stock_related
+	
+	def format_news_data(self, data):
+		data = self.filter_news(data)
+		return data
+
+	def format_stock_data(self, data):
+		return data
+	
+	def format_api_data(self, data):
+		if self.news_flag:
+			return self.format_news_data(data)
+		return self.format_stock_data(data)
+
+	def word_embed(self, X):
+		return X
+	
+	def get_train_data(self):
+		data = self.api_call()
+
+	def get_data(self):
+		data = self.api_call()
+		X = self.format_api_data(data)
+		if self.news_flag:
+			X = self.word_embed(X)
+		
+		return X
+		
+
+class News_LM:
+	def __init__(self,
+			  symbol='AAPL',
+			  interval='5min',
+			  API_KEY='demo',
+			  input_size=15,
+			  hidden_size=16,
+			  output_size=5,
+			  **kwargs):
+
+		self.lm = LSTM()
+
+	def filter(self):
+		pass
+
+	def embed(self, X):
+		return self.lm.embed(X)		
+
+
 class Regressor:
 	def __init__(self, 
 			  symbol='AAPL',
@@ -85,7 +179,7 @@ class Regressor:
 		
 		self.url = lambda api_function, symbol, outputsize: f'https://www.alphavantage.co/query?function={api_function}&symbol={symbol}&outputsize={outputsize}&apikey={self.api_key}'
 		print(self.url(self.api_function, self.symbol, self.outputsize))
-		self.model = STOCK_EMBEDDER(
+		self.model = LSTM(
 			input_size=input_size,
 			hidden_size=hidden_size, 
 			output_size=output_size,
@@ -132,6 +226,11 @@ class Regressor:
 		data_mat_api = self.api_call(kwargs=kwargs)
 		X, _ = reformat_data(data_mat_api, self.WINDOW)
 		return self.model(X).detach().numpy()
+	
+	def embed(self, **kwargs):
+		data = self.api_call(kwargs=kwargs)
+		X, _ = reformat_data(data, self.WINDOW)
+		return self.model.embed(X)
 
 	def api_call(self, api_function=None, symbol=None, outputsize=None, **kwargs):
 		if self.ds_flag:
