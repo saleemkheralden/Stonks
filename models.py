@@ -23,7 +23,7 @@ class LSTM(nn.Module):
 								  		nn.Linear(hidden_size, output_size))
 		
 	def forward(self, x):
-		self.embed(x)
+		x = self.embed(x)
 		
 		x = self.regression_head(x)
 		return x

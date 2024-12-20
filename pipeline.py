@@ -1,24 +1,26 @@
 from dotenv import load_dotenv, find_dotenv
 import os
 from models import train_model, LSTM
-from utils import action, reformat_data
+from utils import action, format_data, window_format_data
 import requests
 import torch
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import google.generativeai as genai
 import json
+import pickle
 
 class Agent:
 	def __init__(self, stock='AAPL', interval='5min', API_KEY='demo', **kwargs):
 		self.regressor = Regressor(stock, interval, API_KEY, **kwargs)
-		self.gemini = Gemini(stock, interval, API_KEY, **kwargs)
+		# self.gemini = Gemini(stock, interval, API_KEY, **kwargs)
 
 	
 	def __call__(self):
-		gemini_output = self.gemini.query()
-		reg_output = self.regressor.pred()
-		return gemini_output, reg_output
+		# gemini_output = self.gemini.query()
+		# reg_output = self.regressor.pred()
+		# return gemini_output, reg_output
+		pass
 
 
 
@@ -52,8 +54,17 @@ dictionary:
 
 
 class Embedder:
-	def __init__(self, symbol, API_KEY, **kwargs):
-		self.news_flag = kwargs.get('news', False)
+	def __init__(self, 
+			symbol='AAPL', 
+			API_KEY='demo',
+			interval='Daily', 
+			input_size=15,
+			hidden_size=16,
+			output_size=5,
+			news=False, 
+			**kwargs):
+
+		self.news_flag = news
 		if self.news_flag:
 			self.news_thresh = kwargs.get('news_thresh', .5)
 
@@ -63,21 +74,52 @@ class Embedder:
 
 		self.outputsize = kwargs.get('outputsize', 'compact')
 		self.api_function = kwargs.get('function', 'TIME_SERIES_DAILY')
-		self.par = 'Daily' if self.api_function.__contains__('DAILY') else '5min'
+		self.interval = 'Daily' if self.api_function.__contains__('DAILY') else interval
 		self.WINDOW = kwargs.get('WINDOW', 60)
 		self.TRAIN_LOOKBACK = kwargs.get('TRAIN_LOOKBACK', 5) * 365  # TODO: CHANGE 365 IF NOT DAILY
-		
-		self.url = lambda api_function, symbol, outputsize: f'https://www.alphavantage.co/query?function={api_function}&symbol={symbol}&outputsize={outputsize}&apikey={self.api_key}'
-		if self.news_flag:
-			self.url = lambda symbol: f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&apikey={self.api_key}'
+		self.url = "https://www.alphavantage.co/query"
 
-	def api_call(self):
+		self.url_args = {
+			"function": self.api_function,
+			"symbol": symbol,
+			"outputsize": self.outputsize,
+			"apikey": self.api_key,
+		}
+		if self.api_function.__contains__("INTRADAY"):
+			self.url_args['interval'] = interval
+
 		if self.news_flag:
-			url = self.url(self.symbol)
-		else:
-			url = self.url(self.api_function, self.symbol, self.outputsize)
+			self.url_args = {
+				"function": "NEWS_SENTIMENT",
+				"symbol": symbol,
+				"apikey": self.api_key,
+			}
 		
-		r = requests.get(url)
+		self.ds = kwargs.get('ds')
+		self.ds_flag = self.ds is not None
+		self.debug = kwargs.get('debug', self.ds_flag)
+
+		self.model = LSTM(
+			input_size=input_size,
+			hidden_size=hidden_size, 
+			output_size=output_size,
+			num_layers=kwargs.get('num_layers', 2),
+			dropout=kwargs.get('dropout', .3),
+			)
+
+	def api_call(self, **kwargs):
+		if self.ds_flag:
+			if self.debug: print(f"DEBUG> NO API WAS CALLED, api_call function returned self.ds['{kwargs.get('on', 'train')}']")
+			return self.ds[kwargs.get('on', 'train')]
+		elif self.debug:
+			if self.debug: print(f"DEBUG> NO API WAS CALLED, api_call function returned dict saved in API_DATA.pkl")
+
+			ret = None
+			with open('API_DATA.pkl', 'rb') as pickle_file:
+				ret = pickle.load(pickle_file)
+			return ret
+		
+		r = requests.get(self.url, self.url_args)
 		data = r.json()
 
 		return data
@@ -104,7 +146,14 @@ class Embedder:
 		return data
 
 	def format_stock_data(self, data):
-		return data
+		if self.ds_flag:
+			return window_format_data(data, self.WINDOW)
+
+		if self.debug: print(f"DEBUG> {list(data.keys())}")
+		return window_format_data(
+			format_data(data, self.interval)[0], 
+			self.WINDOW
+			)
 	
 	def format_api_data(self, data):
 		if self.news_flag:
@@ -117,12 +166,11 @@ class Embedder:
 	def get_train_data(self):
 		data = self.api_call()
 
-	def get_data(self):
-		data = self.api_call()
+	def get_data(self, **kwargs):
+		data = self.api_call(**kwargs)
 		X = self.format_api_data(data)
 		if self.news_flag:
 			X = self.word_embed(X)
-		
 		return X
 		
 
@@ -210,7 +258,7 @@ class Regressor:
 		# sc = StandardScaler()
 		sc = MinMaxScaler(feature_range=(0, 1))
 		data_mat_scaled = sc.fit_transform(data_mat)
-		return reformat_data(data_mat_scaled, self.WINDOW)
+		return window_format_data(data_mat_scaled, self.WINDOW)
 
 	def train(self, **kwargs):
 		X_train, y_train = self.get_train_set()
@@ -224,12 +272,12 @@ class Regressor:
 		"""
 
 		data_mat_api = self.api_call(kwargs=kwargs)
-		X, _ = reformat_data(data_mat_api, self.WINDOW)
+		X, _ = window_format_data(data_mat_api, self.WINDOW)
 		return self.model(X).detach().numpy()
 	
 	def embed(self, **kwargs):
 		data = self.api_call(kwargs=kwargs)
-		X, _ = reformat_data(data, self.WINDOW)
+		X, _ = window_format_data(data, self.WINDOW)
 		return self.model.embed(X)
 
 	def api_call(self, api_function=None, symbol=None, outputsize=None, **kwargs):

@@ -1,18 +1,16 @@
 import matplotlib.pyplot as plt
-from pipeline import Agent, Gemini
+from pipeline import Agent, Gemini, Embedder, LSTM
 import pandas as pd
 import numpy as np
-from utils import ma, reformat_data, train_test_split
+from utils import ma, window_format_data, format_data, train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from pprint import pprint
 from dotenv import find_dotenv, load_dotenv
 import os 
+import pickle
+from pprint import pprint
 
 _ = load_dotenv(find_dotenv())
-
-agent= Agent(API_KEY=os.environ['ALPHA_API_KEY'])
-# print(agent())
-# model = Gemini()
 
 data = pd.read_csv('AAPL.csv')
 data.set_index('Date', inplace=True)
@@ -32,17 +30,26 @@ data_mat = np.hstack((data_mat_np,
 # sc = StandardScaler()
 # sc = MinMaxScaler(feature_range=(0, 1))
 # data_mat_scaled = sc.fit_transform(data_mat)
-X, y = reformat_data(data_mat, 60)
-X_train, _, X_val, _ = train_test_split(X, y)
+X, y = window_format_data(data_mat, 60)
+_, _, X_val, _ = train_test_split(X, y)
 
 ds = {
 	'train': data_mat,
-	'validation': X_val
+	'validation': X_val,
+	'debug': -1,
 }
 
-a = Agent(ds=ds, debug=True)
-print(a.regressor.pred(on='validation'))
-# print(a.regressor.ds_flag)
+
+a = Embedder(ds=ds, debug=True)
+# print(a.regressor.pred(on='validation'))
+print(f"ds_flag: {a.ds_flag}")
+print(f"debug: {a.debug}")
+x, y = a.get_data()
+# print(x.shape)
+
+# lstm = LSTM(15, 16, 5, 2)
+# print(lstm(x))
+
 # print(a.regressor.get_train_set()[0].shape)
 # print(X.shape)
 

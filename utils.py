@@ -19,7 +19,7 @@ def ma(ds, w):
 			for e in ds.T]).T
 
 
-def reformat_data(data, WINDOW):
+def window_format_data(data, WINDOW):
 	X_seq = []
 	y_seq = []
 
@@ -35,6 +35,13 @@ def reformat_data(data, WINDOW):
 
 	return X_seq, y_seq
 
+def format_data(data, inter):
+	ts = data[f'Time Series ({inter})']
+	ts = [ts[e] for e in sorted(ts)]
+	cols = list(ts[0].keys())
+	ts = list(map(lambda x: list(map(float, x.values()))[:-1], ts))
+	ts = torch.Tensor(ts)
+	return ts, cols
 
 def train_test_split(X_seq, y_seq, split=.8):
 
@@ -43,7 +50,7 @@ def train_test_split(X_seq, y_seq, split=.8):
 	X_val, y_val = X_seq[split:], y_seq[split:]
 
 	return X_train, y_train, X_val, y_val
-
+	
 
 
 
