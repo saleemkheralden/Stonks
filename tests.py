@@ -11,6 +11,9 @@ import pickle
 from pprint import pprint
 
 _ = load_dotenv(find_dotenv())
+news_data = None
+with open('NEWS_DATA.pkl', 'rb') as file:
+	news_data = pickle.load(file)
 
 data = pd.read_csv('AAPL.csv')
 data.set_index('Date', inplace=True)
@@ -37,15 +40,23 @@ ds = {
 	'train': data_mat,
 	'validation': X_val,
 	'debug': -1,
+	'news': news_data,
 }
 
 
-a = Embedder(ds=ds, debug=True)
+a = Embedder(ds=ds, debug=True, news=True)
 # print(a.regressor.pred(on='validation'))
 print(f"ds_flag: {a.ds_flag}")
 print(f"debug: {a.debug}")
-x, y = a.get_data()
+print(f"news_flag: {a.news_flag}")
+news_formatted = a.get_data()
+print(news_formatted)
+
+
 # print(x.shape)
+# emb_x = a.embed()
+# print(f"EMBEDDING SHAPE: {emb_x.shape}")
+# print(emb_x)
 
 # lstm = LSTM(15, 16, 5, 2)
 # print(lstm(x))

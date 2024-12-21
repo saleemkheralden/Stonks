@@ -59,8 +59,8 @@ class Embedder:
 			API_KEY='demo',
 			interval='Daily', 
 			input_size=15,
-			hidden_size=16,
-			output_size=5,
+			hidden_size=32,
+			output_size=16,
 			news=False, 
 			**kwargs):
 
@@ -106,11 +106,13 @@ class Embedder:
 			num_layers=kwargs.get('num_layers', 2),
 			dropout=kwargs.get('dropout', .3),
 			)
+		
+		# TODO: Add attention layer to the text embedder LSTM model!
 
 	def api_call(self, **kwargs):
 		if self.ds_flag:
 			if self.debug: print(f"DEBUG> NO API WAS CALLED, api_call function returned self.ds['{kwargs.get('on', 'train')}']")
-			return self.ds[kwargs.get('on', 'train')]
+			return self.ds[kwargs.get('on', 'news' if self.news_flag else 'train')]
 		elif self.debug:
 			if self.debug: print(f"DEBUG> NO API WAS CALLED, api_call function returned dict saved in API_DATA.pkl")
 
@@ -132,14 +134,17 @@ class Embedder:
 			req_stock_score = 0
 			for e in article['ticker_sentiment']:
 				# print()
-				if e['ticker'] == "AAPL":
+				if e['ticker'] == self.symbol:
 					req_stock_score = float(e['relevance_score'])
 					# print(req_stock_score)
 					break
 			if req_stock_score > self.news_thresh:
 				req_stock_related.append(article)
 		
-		return req_stock_related
+		return {'items': len(req_stock_related),
+		  		'sentiment_score_definition': 'x <= -0.35: Bearish; -0.35 < x <= -0.15: Somewhat-Bearish; -0.15 < x < 0.15: Neutral; 0.15 <= x < 0.35: Somewhat_Bullish; x >= 0.35: Bullish',
+				'relevance_score_definition': '0 < x <= 1, with a higher score indicating higher relevance.',
+				'feed': req_stock_related}
 	
 	def format_news_data(self, data):
 		data = self.filter_news(data)
@@ -167,12 +172,30 @@ class Embedder:
 		data = self.api_call()
 
 	def get_data(self, **kwargs):
+		"""Gets the train set from the API call (if ds parameter is None).
+		the data is scaled using MinMaxScaler, then formatted into sequences of <WINDOW> lengths, 
+		such that the final shape is (ds.shape[0] - WINDOW, WINDOW, ds.shape[1] (num_features))
+
+		Args:
+			slide (int, optional): _description_. Defaults to 0.
+
+		Returns:
+			_type_: _description_
+		"""
+		# trims the train set such that it starts from <TRAIN_LOOKBACK> years ago.
+
 		data = self.api_call(**kwargs)
 		X = self.format_api_data(data)
 		if self.news_flag:
 			X = self.word_embed(X)
 		return X
+	
+	def embed(self, X=None):
+		if X is None:
+			X, _ = self.get_data()
 		
+		return self.model(X)
+
 
 class News_LM:
 	def __init__(self,

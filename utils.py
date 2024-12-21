@@ -20,6 +20,15 @@ def ma(ds, w):
 
 
 def window_format_data(data, WINDOW):
+	"""Transforms the data from shape [N, n_features] to [N-WINDOW, WINDOW, n_features]
+
+	Args:
+		data (_type_): _description_
+		WINDOW (_type_): _description_
+
+	Returns:
+		tuple: (X, y)
+	"""
 	X_seq = []
 	y_seq = []
 
