@@ -13,18 +13,21 @@ class Transformer(nn.Module):
 class LSTM(nn.Module):
 	def __init__(self, input_size=5, hidden_size=16, output_size=1, num_layers=2, dropout=.3):
 		super(LSTM, self).__init__()
+		bidirectional = True
 		self.lstm = nn.LSTM(input_size=input_size, 
 					  		hidden_size=hidden_size, 
-							batch_first=True, 
+							batch_first=True,
+							bidirectional=bidirectional, 
 							num_layers=num_layers, 
 							dropout=dropout if num_layers > 1 else 0)
-		
-		self.regression_head = nn.Sequential(nn.Linear(hidden_size, hidden_size), 
+		self.tanh = nn.Tanh()
+		self.regression_head = nn.Sequential(nn.Linear((1 + int(bidirectional)) * hidden_size, hidden_size), 
 								  		nn.Linear(hidden_size, output_size))
 		
 	def forward(self, x):
 		x = self.embed(x)
-		
+		x = self.tanh(x)
+
 		x = self.regression_head(x)
 		return x
 	
