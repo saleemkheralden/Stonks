@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Stonks App</title>
+	<style>
+		body {
+			display: flex;
+			margin: 0;
+			font-family: Arial, sans-serif;
+		}
+		.main-content {
+			flex: 2;
+			padding: 20px;
+		}
+		.sidebar {
+			flex: 2;
+			background-color: #f4f4f4;
+			padding: 20px;
+			border-left: 1px solid #ddd;
+		}
+		.graph {
+			width: 100%;
+			height: 80vh;
+			background-color: #eaeaea;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border: 1px solid #ccc;
+		}
+	</style>
+</head>
+<body>
+	<div class="main-content">
+		<div class="graph">
+			<canvas id="myChart"></canvas>
+			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+			<script>
+				var ctx = document.getElementById('myChart').getContext('2d');
+				var myChart = new Chart(ctx, {
+					type: 'line',
+					data: {
+						labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+						datasets: [{
+							label: 'Demo Data',
+							data: [65, 59, 80, 81, 56, 55, 40],
+							backgroundColor: 'rgba(75, 192, 192, 0.2)',
+							borderColor: 'rgba(75, 192, 192, 1)',
+							borderWidth: 1
+						}]
+					},
+					options: {
+						scales: {
+							y: {
+								beginAtZero: true
+							}
+						}
+					}
+				});
+			</script>
+		</div>
+	</div>
+	<div class="sidebar">
+		<h2>Settings</h2>
+		<p>Future functionalities will be added here.</p>
+	</div>
+</body>
+</html>

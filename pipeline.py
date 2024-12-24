@@ -10,6 +10,88 @@ import google.generativeai as genai
 import json
 import pickle
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Agent:
 	def __init__(self, stock='AAPL', interval='5min', API_KEY='demo', **kwargs):
 		self.regressor = Regressor(stock, interval, API_KEY, **kwargs)
@@ -155,10 +237,7 @@ class Embedder:
 			return window_format_data(data, self.WINDOW)
 
 		if self.debug: print(f"DEBUG> {list(data.keys())}")
-		return window_format_data(
-			format_data(data, self.interval)[0], 
-			self.WINDOW
-			)
+		return format_data(data, self.interval, self.WINDOW)
 	
 	def format_api_data(self, data):
 		if self.news_flag:

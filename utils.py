@@ -1,9 +1,11 @@
 import os
 import torch
+import requests
 import numpy as np
 from enum import Enum
 import google.generativeai as genai
 from dotenv import find_dotenv, load_dotenv
+
 
 class action(Enum):
 	BUY = 0
@@ -12,7 +14,7 @@ class action(Enum):
 
 
 def ma(ds, w):
-	return np.array([
+	return torch.Tensor([
 		np.concatenate((
 			e[:w - 1], 
 			np.convolve(e, np.ones(w), 'valid') / w)) 
@@ -44,13 +46,22 @@ def window_format_data(data, WINDOW):
 
 	return X_seq, y_seq
 
-def format_data(data, inter):
+def convert_data(data, inter):
 	ts = data[f'Time Series ({inter})']
 	ts = [ts[e] for e in sorted(ts)]
 	cols = list(ts[0].keys())
 	ts = list(map(lambda x: list(map(float, x.values()))[:-1], ts))
 	ts = torch.Tensor(ts)
 	return ts, cols
+
+def format_data(data, inter, WINDOW=60, mas=[], prod=False):
+	ts, cols = convert_data(data, inter)
+	ts = torch.hstack((ts, *[ma(ts, e) for e in mas]))
+
+	if prod:
+		return ts[-WINDOW:], cols  # i.e. only the last window
+	
+	return window_format_data(ts, WINDOW), cols 
 
 def train_test_split(X_seq, y_seq, split=.8):
 
@@ -60,6 +71,31 @@ def train_test_split(X_seq, y_seq, split=.8):
 
 	return X_train, y_train, X_val, y_val
 	
+class API:
+	def __init__(self, 
+			  url='https://www.alphavantage.co/query',
+			  **kwargs):
+		_ = load_dotenv(find_dotenv())
+		self.api_key = os.getenv('ALPHA_API_KEY')
+		self.params =  {
+			"function": kwargs.get('function', "TIME_SERIES_DAILY"),
+			"symbol": kwargs.get('symbol', "AAPL"),
+			# "interval": "5min",
+			"outputsize": kwargs.get('outputsize', "compact"),
+			"apikey": self.api_key
+			}
+		self.url = url
+
+	def grab_raw_api_data(self):
+		r = requests.get(self.url, params=self.params)
+		return r.json()
+	
+	def grab_api_data(self, inter, window=60, mas=[50, 200], prod=False):
+		raw_data = self.grab_raw_api_data()
+		return format_data(raw_data, inter, window, mas, prod)
+
+
+
 
 
 

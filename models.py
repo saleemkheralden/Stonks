@@ -2,6 +2,30 @@ import torch
 from torch import nn
 from torch import optim
 
+class Embedder(nn.Module):
+	def __init__(self,
+			  input_size=12,
+			  hidden_size=32,
+			  bidirectional=True,
+			  num_layers=2,
+			  dropout=.3,
+			  **kwargs):
+		
+		super().__init__()
+		self.lstm = nn.LSTM(input_size=input_size, 
+					  		hidden_size=hidden_size, 
+							batch_first=True,
+							bidirectional=bidirectional, 
+							num_layers=num_layers, 
+							dropout=dropout if num_layers > 1 else 0)
+		
+	def forward(self, x):
+		x, _ = self.lstm(x)
+		x = x[:, -1, :]
+		return x
+
+
+
 class Transformer(nn.Module):
 	def __init__(self):
 		pass
